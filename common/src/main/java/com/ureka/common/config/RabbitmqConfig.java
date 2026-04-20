@@ -1,14 +1,16 @@
 package com.ureka.common.config;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
+
 import org.springframework.amqp.core.*;
+import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.amqp.support.converter.JacksonJsonMessageConverter;
 import org.springframework.amqp.support.converter.MessageConverter;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-
-import com.rabbitmq.client.ConnectionFactory;
 
 @Configuration
 public class RabbitmqConfig {
@@ -57,12 +59,23 @@ public class RabbitmqConfig {
     }
 
     @Bean
-    public MessageConverter messageConverter(ObjectMapper objectMapper) {
-        return new JacksonJsonMessageConverter(objectMapper);
+    public MessageConverter messageConverter(ObjectProvider<JsonMapper> jsonMapperProvider) {
+        JsonMapper jsonMapper = jsonMapperProvider.getIfAvailable(() -> JsonMapper.builder().build());
+        return new JacksonJsonMessageConverter(jsonMapper);
     }
 
     @Bean
-    public RabbitTemplate rabbitTemplate(ConnectionFactory connectionFactory, MessageConverter messageConverter) {
+    public RabbitTemplate rabbitTemplate(
+            ObjectProvider<ConnectionFactory> connectionFactoryProvider,
+            MessageConverter messageConverter) {
+
+        // 애플리케이션 시작 시 ConnectionFactory가 없는 경우를 방지
+        ConnectionFactory connectionFactory = connectionFactoryProvider.getIfAvailable();
+
+        if (connectionFactory == null) {
+            throw new IllegalStateException("RabbitMQ ConnectionFactory를 찾을 수 없습니다.");
+        }
+
         RabbitTemplate rabbitTemplate = new RabbitTemplate(connectionFactory);
         rabbitTemplate.setMessageConverter(messageConverter);
         return rabbitTemplate;
