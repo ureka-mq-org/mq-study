@@ -1,0 +1,16 @@
+rootProject.name = 'rabbitmq'
+
+include 'common'
+include 'core'
+
+def studyDir = new File(rootDir, 'study')
+
+if(studyDir.exists()){
+    studyDir.eachDir{ weekDir ->
+        weekDir.eachDir{ memberDir ->
+            include "study:${weekDir.name}:${memberDir.name}"
+        }
+    }
+}
+
+
